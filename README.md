@@ -1,2 +1,2 @@
 # Washington
-Modelling western Washington in Unity
+Modeling western Washington in Unity
