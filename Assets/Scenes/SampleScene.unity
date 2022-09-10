@@ -159,7 +159,8 @@ MonoBehaviour:
   heightMap: {fileID: 2800000, guid: cdf15d16d05b241f0b74598a6a6210f3, type: 3}
   chunkRangeX: 5000
   chunkRangeZ: 5000
-  chunkRes: 128
+  samplingRes: 64
+  chunkLOD: 1
 --- !u!4 &101125944
 Transform:
   m_ObjectHideFlags: 0

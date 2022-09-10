@@ -11,7 +11,8 @@ public class TerrainGenerator : MonoBehaviour {
 
     public float chunkRangeX;
     public float chunkRangeZ;
-    public int chunkRes;
+    public int samplingRes;
+    public int chunkLOD;
     private List<Chunk> chunks = new List<Chunk>();
 
     void Start() {
@@ -21,7 +22,7 @@ public class TerrainGenerator : MonoBehaviour {
     public void CreateChunks(Vector2 location) {
         Vector2[] anchors = GetChunkAnchors(location);
         foreach (Vector2 anchor in anchors) {
-            chunks.Add(new Chunk(anchor, chunkRes, this));
+            chunks.Add(new Chunk(anchor, samplingRes, this, chunkLOD));
         }
     }
 
