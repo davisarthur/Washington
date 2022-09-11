@@ -51,13 +51,11 @@ public static class Subdivisor {
         Vector3[] newVertices = new Vector3[oldVertices.Length * 4];
         for (int i = 0; i < 2 * oldNx; i++) {
             for (int j = 0; j < 2 * oldNz; j++) {
-
+                int newIndex = i * oldNx * 2 + j;
+                int oldIndex = oldNx * (i / 2) + j / 2;
                 try {
-                    int newIndex = i * oldNx * 2 + j;
-                    int oldIndex = oldNx * i / 2 + j / 2;
-
                     // TODO: Account for edge rules
-                    if (oldIndex < oldNx || oldIndex >= oldNx * (oldNz - 1) || oldIndex % oldNx == 0 || oldIndex % (oldNx - 1) == 0) {
+                    if (oldIndex < oldNx || oldIndex >= oldNx * (oldNz - 1) || oldIndex % oldNx == 0 || (oldIndex + 1) % oldNx == 0) {
                         newVertices[newIndex] = oldVertices[oldIndex];
                         continue;
                     }
@@ -73,7 +71,10 @@ public static class Subdivisor {
                         newVertices[newIndex] = OddVertexOddRowOddColumnHeight(oldIndex, oldVertices, oldNx);
                     }
                 } catch (Exception e) {
-                    Debug.Log("indices: (" + i + ", " + j + ")");
+                    Debug.Log("i: " + i + ", j: " + j);
+                    Debug.Log("oldNx: " + oldNx);
+                    Debug.Log("newIndex: " + newIndex + ", " + newVertices.Length);
+                    Debug.Log("oldIndex: " + oldIndex + ", " + oldVertices.Length);
                     Debug.Log(e);
                 }
             }

@@ -32,7 +32,7 @@ public class Chunk {
         for (int i = 0; i < lod; i++) {
             for (int j = 0; j < lod; j++) {
                 Vector3[] meshVertices = GetMeshVertices(terrainVertices, i, j);
-                int[] triangles = GenerateTriangles();
+                int[] triangles = GenerateTriangles(resUV);
                 Mesh mesh = new Mesh();
                 mesh.vertices = meshVertices;
                 mesh.uv = GetUVs(meshVertices);
@@ -62,22 +62,22 @@ public class Chunk {
         return vertices;
     }
 
-    private int[] GenerateTriangles() {
-        int numGridSquares = (resUV - 1) * (resUV - 1);
+    private int[] GenerateTriangles(int meshRes) {
+        int numGridSquares = (meshRes - 1) * (meshRes - 1);
         int numTriangles = 2 * numGridSquares;
         int[] triangles = new int[numTriangles * 3];
-        for (int i = 0; i < resUV - 1; i++) {
-            for (int j = 0; j < resUV - 1; j++) {
-                int gridSquareIndex = i * (resUV - 1) + j;
-                int vertexIndex = i * resUV + j;
+        for (int i = 0; i < meshRes - 1; i++) {
+            for (int j = 0; j < meshRes - 1; j++) {
+                int gridSquareIndex = i * (meshRes - 1) + j;
+                int vertexIndex = i * meshRes + j;
 
                 // bottom triangle
-                triangles[gridSquareIndex * 6] = vertexIndex + resUV + 1;
-                triangles[gridSquareIndex * 6 + 1] = vertexIndex + resUV;
+                triangles[gridSquareIndex * 6] = vertexIndex + meshRes + 1;
+                triangles[gridSquareIndex * 6 + 1] = vertexIndex + meshRes;
                 triangles[gridSquareIndex * 6 + 2] = vertexIndex;
 
                 // top triangle
-                triangles[gridSquareIndex * 6 + 3] = vertexIndex + resUV + 1;
+                triangles[gridSquareIndex * 6 + 3] = vertexIndex + meshRes + 1;
                 triangles[gridSquareIndex * 6 + 4] = vertexIndex;
                 triangles[gridSquareIndex * 6 + 5] = vertexIndex + 1;
             }
@@ -87,7 +87,7 @@ public class Chunk {
 
     private Vector3[] GetMeshVertices(Vector3[] chunkVertices, int ix, int iz) {
         Vector3[] meshVertices = new Vector3[resUV * resUV];
-        int vertexIndex = ix * resUV + iz * resUV;
+        int vertexIndex = ix * resUV * lod * resUV + iz * resUV;
         for (int i = 0; i < resUV; i++) {
             for (int j = 0; j < resUV; j++) {
                 int meshIndex = i * resUV + j;
