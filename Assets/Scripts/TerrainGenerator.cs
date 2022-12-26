@@ -9,45 +9,103 @@ public class TerrainGenerator : MonoBehaviour {
     public float rangeZ; // 9000 * 2
     public Texture2D heightMap;
 
-    public float chunkRangeX;
-    public float chunkRangeZ;
     public int samplingRes;
-    public int chunkLOD;
-    private List<Chunk> chunks = new List<Chunk>();
+    public int numSubdivisions;
+    private int finalResolution;
+
+    const int MAX_MESH_RES = 128;
 
     void Start() {
-        CreateChunks(new Vector2(transform.position.x, transform.position.z));
-    }
 
-    public void CreateChunks(Vector2 location) {
-        Vector2[] anchors = GetChunkAnchors(location);
-        foreach (Vector2 anchor in anchors) {
-            chunks.Add(new Chunk(anchor, samplingRes, this, chunkLOD));
+        finalResolution = samplingRes * (int) Mathf.Pow(2f, numSubdivisions);
+
+        // generate vertices
+        Vector3[] terrainVertices = GenerateVerticesFromTerrain();
+        for (int i = 0; i < numSubdivisions; i++) {
+            terrainVertices = Subdivisor.GenerateNewVertices(terrainVertices, samplingRes * (int) Mathf.Pow(2f, i), samplingRes * (int) Mathf.Pow(2f, i));
+        }
+
+        // load vertices into meshes
+        int numMeshesAxis = finalResolution / MAX_MESH_RES;
+        for (int i = 0; i < numMeshesAxis; i++) {
+            for (int j = 0; j < numMeshesAxis; j++) {
+                Vector3[] meshVertices = GetMeshVertices(terrainVertices, i, j);
+                int[] triangles = GenerateTriangles(MAX_MESH_RES);
+                Mesh mesh = new Mesh();
+                mesh.vertices = meshVertices;
+                mesh.uv = GetUVs(meshVertices);
+                mesh.triangles = triangles;
+                mesh.RecalculateNormals();
+                GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                plane.GetComponent<MeshFilter>().mesh = mesh;
+                plane.transform.position = transform.position;
+                plane.transform.parent = transform;
+            }
         }
     }
 
-    public Vector2Int ComputePixel(Vector2 location) {
-        int xPixel = Mathf.Clamp(Mathf.RoundToInt(location.x / rangeX * heightMap.width), 0, heightMap.width);
-        int zPixel = Mathf.Clamp(Mathf.RoundToInt(location.y / rangeZ * heightMap.height), 0, heightMap.height);
+    private Vector3[] GenerateVerticesFromTerrain() {
+        Vector3[] vertices = new Vector3[samplingRes * samplingRes];
+        for (int i = 0; i < samplingRes; i++) {
+            for (int j = 0; j < samplingRes; j++) {
+                float x = rangeX * i / (samplingRes - 1f);
+                float z = rangeZ * j / (samplingRes - 1f);
+                Vector2Int pixel = ComputePixel(x, z);
+                float normalizedHeight = heightMap.GetPixel(pixel.x, pixel.y).grayscale;
+                float height = minHeight + normalizedHeight * maxHeight - minHeight;
+                vertices[i * samplingRes + j] = new Vector3(x, height, z);
+            }
+        }
+        return vertices;
+    }
+
+    private Vector2Int ComputePixel(float x, float z) {
+        int xPixel = Mathf.Clamp(Mathf.RoundToInt(x / rangeX * heightMap.width), 0, heightMap.width);
+        int zPixel = Mathf.Clamp(Mathf.RoundToInt(z / rangeZ * heightMap.height), 0, heightMap.height);
         return new Vector2Int(xPixel, zPixel);
     }
 
-    private Vector2[] GetChunkAnchors(Vector2 location) {
-        Vector2 anchor = GetChunkAnchor(location);
-        Vector2[] neighbors = new Vector2[9];
-        int count = 0;
-        for (int i = -1; i <= 1; i++) {
-            for (int j = -1; j <= 1; j++) {
-                neighbors[count] = anchor + new Vector2(i * chunkRangeX, j * chunkRangeZ);
-                count++;
+    private Vector3[] GetMeshVertices(Vector3[] chunkVertices, int ix, int iz) {
+        Vector3[] meshVertices = new Vector3[MAX_MESH_RES * MAX_MESH_RES];
+        int vertexIndex = ix * MAX_MESH_RES * finalResolution + iz * MAX_MESH_RES;
+        for (int i = 0; i < MAX_MESH_RES; i++) {
+            for (int j = 0; j < MAX_MESH_RES; j++) {
+                int meshIndex = i * MAX_MESH_RES + j;
+                meshVertices[meshIndex] = chunkVertices[vertexIndex++];
             }
+            vertexIndex += finalResolution - MAX_MESH_RES;
         }
-        return neighbors;
+        return meshVertices;
     }
 
-    private Vector2 GetChunkAnchor(Vector2 location) {
-        float x = (int) (location.x / chunkRangeX) * chunkRangeX;
-        float z = (int) (location.y / chunkRangeZ) * chunkRangeZ;
-        return new Vector2(x, z);
+    private int[] GenerateTriangles(int meshRes) {
+        int numGridSquares = (meshRes - 1) * (meshRes - 1);
+        int numTriangles = 2 * numGridSquares;
+        int[] triangles = new int[numTriangles * 3];
+        for (int i = 0; i < meshRes - 1; i++) {
+            for (int j = 0; j < meshRes - 1; j++) {
+                int gridSquareIndex = i * (meshRes - 1) + j;
+                int vertexIndex = i * meshRes + j;
+
+                // bottom triangle
+                triangles[gridSquareIndex * 6] = vertexIndex + meshRes + 1;
+                triangles[gridSquareIndex * 6 + 1] = vertexIndex + meshRes;
+                triangles[gridSquareIndex * 6 + 2] = vertexIndex;
+
+                // top triangle
+                triangles[gridSquareIndex * 6 + 3] = vertexIndex + meshRes + 1;
+                triangles[gridSquareIndex * 6 + 4] = vertexIndex;
+                triangles[gridSquareIndex * 6 + 5] = vertexIndex + 1;
+            }
+        }
+        return triangles;
+    }
+
+    private Vector2[] GetUVs(Vector3[] vertices) {
+        Vector2[] uvs = new Vector2[vertices.Length];
+        for (int i = 0; i < vertices.Length; i++) {
+            uvs[i] = new Vector2(vertices[i].x, vertices[i].z);
+        }
+        return uvs;
     }
 }
