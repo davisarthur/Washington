@@ -16,32 +16,29 @@ public class TerrainGenerator : MonoBehaviour {
     const int MAX_MESH_RES = 128;
 
     void Start() {
-
-        finalResolution = samplingRes * (int) Mathf.Pow(2f, numSubdivisions);
+        finalResolution = samplingRes * (int)Mathf.Pow(2f, numSubdivisions);
 
         // generate vertices
         Vector3[] terrainVertices = GenerateVerticesFromTerrain();
         for (int i = 0; i < numSubdivisions; i++) {
-            terrainVertices = Subdivisor.GenerateNewVertices(terrainVertices, samplingRes * (int) Mathf.Pow(2f, i), samplingRes * (int) Mathf.Pow(2f, i));
+            terrainVertices = Subdivisor.GenerateNewVertices(terrainVertices, samplingRes * (int)Mathf.Pow(2f, i), samplingRes * (int)Mathf.Pow(2f, i));
         }
 
-        // load vertices into meshes
-        int numMeshesAxis = finalResolution / MAX_MESH_RES;
-        for (int i = 0; i < numMeshesAxis; i++) {
-            for (int j = 0; j < numMeshesAxis; j++) {
-                Vector3[] meshVertices = GetMeshVertices(terrainVertices, i, j);
-                int[] triangles = GenerateTriangles(MAX_MESH_RES);
-                Mesh mesh = new Mesh();
-                mesh.vertices = meshVertices;
-                mesh.uv = GetUVs(meshVertices);
-                mesh.triangles = triangles;
-                mesh.RecalculateNormals();
-                GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-                plane.GetComponent<MeshFilter>().mesh = mesh;
-                plane.transform.position = transform.position;
-                plane.transform.parent = transform;
-            }
-        }
+        // create meshes from vertices
+        DivideVerticesIntoMeshes(terrainVertices);
+    }
+
+    private void GenerateMeshFromVertices(Vector3[] meshVertices) {
+        int[] triangles = GenerateTriangles(MAX_MESH_RES);
+        Mesh mesh = new Mesh();
+        mesh.vertices = meshVertices;
+        mesh.uv = GetUVs(meshVertices);
+        mesh.triangles = triangles;
+        mesh.RecalculateNormals();
+        GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        plane.GetComponent<MeshFilter>().mesh = mesh;
+        plane.transform.position = transform.position;
+        plane.transform.parent = transform;
     }
 
     private Vector3[] GenerateVerticesFromTerrain() {
@@ -65,13 +62,31 @@ public class TerrainGenerator : MonoBehaviour {
         return new Vector2Int(xPixel, zPixel);
     }
 
-    private Vector3[] GetMeshVertices(Vector3[] chunkVertices, int ix, int iz) {
+    private void DivideVerticesIntoMeshes(Vector3[] terrainVertices) {
+        int xIndex = 0;
+        while (xIndex < finalResolution) {
+            int zIndex = 0;
+            while (zIndex < finalResolution) {
+                Vector3[] meshVertices = MeshVerticesAtAnchor(terrainVertices, xIndex, zIndex);
+                GenerateMeshFromVertices(meshVertices);
+                zIndex += MAX_MESH_RES - 1;
+            }
+            xIndex += MAX_MESH_RES - 1;
+        }
+    }
+
+    private Vector3[] MeshVerticesAtAnchor(Vector3[] terrainVertices, int xIndex, int zIndex) {
         Vector3[] meshVertices = new Vector3[MAX_MESH_RES * MAX_MESH_RES];
-        int vertexIndex = ix * MAX_MESH_RES * finalResolution + iz * MAX_MESH_RES;
+        int vertexIndex = xIndex * finalResolution + zIndex;
         for (int i = 0; i < MAX_MESH_RES; i++) {
+            if (xIndex + i >= finalResolution) break;
             for (int j = 0; j < MAX_MESH_RES; j++) {
+                if (zIndex + j >= finalResolution) {
+                    vertexIndex += finalResolution - j - (finalResolution - MAX_MESH_RES);
+                    break;
+                }
                 int meshIndex = i * MAX_MESH_RES + j;
-                meshVertices[meshIndex] = chunkVertices[vertexIndex++];
+                meshVertices[meshIndex] = terrainVertices[vertexIndex++];
             }
             vertexIndex += finalResolution - MAX_MESH_RES;
         }
