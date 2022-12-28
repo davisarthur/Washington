@@ -2,12 +2,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[ExecuteInEditMode]
 public class TerrainGenerator : MonoBehaviour {
     public float minHeight;
     public float maxHeight;
     public float rangeX; // 9000 * 2
     public float rangeZ; // 9000 * 2
     public Texture2D heightMap;
+    public Material material;
+    public Gradient gradient;
 
     public int samplingRes;
     public int numSubdivisions;
@@ -15,7 +18,7 @@ public class TerrainGenerator : MonoBehaviour {
 
     const int MAX_MESH_RES = 128;
 
-    void Start() {
+    private void OnGUI() {
         finalResolution = samplingRes * (int)Mathf.Pow(2f, numSubdivisions);
 
         // generate vertices
@@ -33,9 +36,11 @@ public class TerrainGenerator : MonoBehaviour {
         Mesh mesh = new Mesh();
         mesh.vertices = meshVertices;
         mesh.uv = GetUVs(meshVertices);
+        mesh.colors = GetColors(meshVertices);
         mesh.triangles = triangles;
         mesh.RecalculateNormals();
         GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        plane.GetComponent<MeshRenderer>().material = material;
         plane.GetComponent<MeshFilter>().mesh = mesh;
         plane.transform.position = transform.position;
         plane.transform.parent = transform;
@@ -116,10 +121,19 @@ public class TerrainGenerator : MonoBehaviour {
         return triangles;
     }
 
+    private Color[] GetColors(Vector3[] vertices) {
+        Color[] colors = new Color[vertices.Length];
+        for (int i = 0; i < vertices.Length; i++) {
+            float normalizedHeight = (vertices[i].y - minHeight) / (maxHeight - minHeight);
+            colors[i] = gradient.Evaluate(normalizedHeight);
+        }
+        return colors;
+    }
+
     private Vector2[] GetUVs(Vector3[] vertices) {
         Vector2[] uvs = new Vector2[vertices.Length];
         for (int i = 0; i < vertices.Length; i++) {
-            uvs[i] = new Vector2(vertices[i].x, vertices[i].z);
+            uvs[i] = new Vector2(vertices[i].x / rangeX, vertices[i].z / rangeZ);
         }
         return uvs;
     }
